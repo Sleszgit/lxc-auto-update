@@ -1,0 +1,10 @@
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Lock files
+*.lock

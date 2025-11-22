@@ -1,0 +1,15 @@
+# Sudoers configuration for automatic updates
+# Install to: /etc/sudoers.d/auto-update
+# Permissions: 440 (r--r-----)
+# Owner: root:root
+#
+# Installation:
+# sudo cp sudoers-auto-update /etc/sudoers.d/auto-update
+# sudo chmod 440 /etc/sudoers.d/auto-update
+# sudo visudo -c
+#
+# Replace 'slesz' with your username
+
+slesz ALL=(ALL) NOPASSWD: /usr/bin/npm i -g @anthropic-ai/claude-code
+slesz ALL=(ALL) NOPASSWD: /usr/bin/apt update
+slesz ALL=(ALL) NOPASSWD: /usr/bin/apt upgrade -y
