@@ -1,157 +1,141 @@
-# LXC Auto-Update Setup
+# LXC Manual Update Setup
 
-Automatic updates for Claude Code and system packages on LXC containers.
+Manual update command for Claude Code and system packages on LXC containers.
 
 ## Problem Solved
 
-Fixed the recurring Claude Code auto-update error:
-```
-✗ Auto-update failed · Try claude doctor or npm i -g @anthropic-ai/claude-code
-```
+The automatic update script was causing login hangs due to sudo password prompts. This manual update approach gives you full control over when updates happen without any login delays or password prompt issues.
 
 ## Solution Overview
 
-Implemented automatic background updates that run on every login:
+Simple manual update command that you run when needed:
 - **Claude Code** - Updates to latest version via npm
 - **System Packages** - Updates via apt (update && upgrade)
-- **No password prompts** - Configured sudoers for passwordless updates
-- **Background execution** - No login delay
-- **Logging** - All updates tracked in `~/.auto-update.log`
+- **Interactive** - Prompts for sudo password when you run it
+- **Clean output** - Shows progress and results in your terminal
+- **On-demand** - Run updates only when you want them
 
 ## Installation
 
-### 1. Copy Auto-Update Script
+### 1. Copy Manual Update Script
 
 ```bash
-cp auto-update.sh ~/.auto-update.sh
-chmod +x ~/.auto-update.sh
+cp update.sh ~/update.sh
+chmod +x ~/update.sh
 ```
 
-### 2. Configure Sudoers (Passwordless Updates)
+### 2. Add Alias to .bashrc
 
-As root:
+Add this line to `~/.bashrc`:
 
 ```bash
-printf "slesz ALL=(ALL) NOPASSWD: /usr/bin/npm i -g @anthropic-ai/claude-code\nslesz ALL=(ALL) NOPASSWD: /usr/bin/apt update\nslesz ALL=(ALL) NOPASSWD: /usr/bin/apt upgrade -y\n" > /etc/sudoers.d/auto-update
-
-chmod 440 /etc/sudoers.d/auto-update
-
-visudo -c
+alias update='$HOME/update.sh'
 ```
 
-**Replace `slesz` with your username if different.**
-
-### 3. Add to .bashrc
-
-Add these lines to `~/.bashrc`:
+### 3. Reload Your Shell
 
 ```bash
-# Auto-update Claude Code and system packages on login
-# Runs in background to avoid delaying login
-# Check log at: ~/.auto-update.log
-if [ -f "$HOME/.auto-update.sh" ]; then
-    "$HOME/.auto-update.sh" &
-fi
+source ~/.bashrc
 ```
 
-### 4. Test
+## Usage
+
+Simply run:
 
 ```bash
-# Run manually to test
-bash ~/.auto-update.sh
-
-# Check the log
-cat ~/.auto-update.log
+update
 ```
 
-Expected output should show successful updates without password prompts.
+You'll be prompted for your sudo password, then the script will:
+1. Update Claude Code
+2. Update system package lists
+3. Upgrade all packages
+4. Show you the results
 
 ## How It Works
 
-1. **On Login** - `.bashrc` triggers `~/.auto-update.sh` in background
-2. **Lock File** - Prevents multiple simultaneous updates (`/tmp/auto-update.lock`)
+1. **You run `update`** - Bash alias triggers `~/update.sh`
+2. **Interactive sudo** - Prompts for password normally (no hanging)
 3. **Update Claude Code** - Runs `sudo npm i -g @anthropic-ai/claude-code`
 4. **Update System** - Runs `sudo apt update && sudo apt upgrade -y`
-5. **Logging** - All output logged to `~/.auto-update.log`
+5. **Clear output** - See exactly what's happening in your terminal
 
 ## Files
 
-- `auto-update.sh` - Main update script
-- `sudoers-auto-update` - Sudoers configuration template
+- `update.sh` - Manual update script
+- `auto-update.sh` - (Deprecated) Old automatic update script
+- `sudoers-auto-update` - (Not needed for manual updates)
 
-## Security Considerations
+## Why Manual Instead of Automatic?
 
-The sudoers configuration allows **only these specific commands** to run without password:
-- `/usr/bin/npm i -g @anthropic-ai/claude-code`
-- `/usr/bin/apt update`
-- `/usr/bin/apt upgrade -y`
+**Automatic updates had issues:**
+- Required passwordless sudo configuration
+- Could hang at login if sudo wasn't configured properly
+- Hidden background processes
+- Terminal I/O errors from sudo in background
 
-This is safe for personal homelab systems and follows standard practices for automated updates.
+**Manual updates are better:**
+- No special sudo configuration needed
+- No login delays or hangs
+- Full visibility of what's being updated
+- You choose when to update
+- Simpler and more reliable
 
 ## Monitoring
 
-### Check Update Log
-
-```bash
-# View full log
-cat ~/.auto-update.log
-
-# View last 20 lines
-tail -20 ~/.auto-update.log
-
-# Monitor in real-time
-tail -f ~/.auto-update.log
-```
-
-### Log Format
+Since updates run interactively in your terminal, you see everything in real-time:
 
 ```
-=== Auto-update started at Sat Nov 22 05:07:33 AM CET 2025 ===
+==========================================
+  System Update Script
+==========================================
+
 Updating Claude Code...
-[npm output]
+✓ Claude Code updated successfully
+
 Updating system packages...
-[apt output]
-=== Auto-update completed at Sat Nov 22 05:07:42 AM CET 2025 ===
+✓ Package list updated
+
+Upgrading packages...
+✓ System packages upgraded successfully
+
+==========================================
+  Update completed at Sat Nov 22 06:15:00 AM CET 2025
+==========================================
 ```
 
 ## Troubleshooting
 
-### Updates Not Running
+### Command Not Found
 
-1. Check if script is executable:
+1. Check if script exists:
    ```bash
-   ls -l ~/.auto-update.sh
+   ls -l ~/update.sh
    ```
 
-2. Check .bashrc configuration:
+2. Check .bashrc alias:
    ```bash
-   grep "auto-update" ~/.bashrc
+   grep "update" ~/.bashrc
    ```
 
-3. Run manually and check for errors:
+3. Reload shell:
    ```bash
-   bash ~/.auto-update.sh
-   cat ~/.auto-update.log
+   source ~/.bashrc
    ```
 
-### Password Prompts Still Appearing
+### Permission Denied
 
-1. Verify sudoers file exists and has correct permissions:
-   ```bash
-   ls -l /etc/sudoers.d/auto-update
-   ```
-   Should show: `-r--r----- 1 root root`
+```bash
+chmod +x ~/update.sh
+```
 
-2. Validate sudoers syntax:
-   ```bash
-   sudo visudo -c
-   ```
+### Sudo Password Issues
 
-3. Check file ownership:
-   ```bash
-   sudo ls -l /etc/sudoers.d/auto-update
-   ```
-   Owner must be `root:root`, not your user
+The script uses normal sudo, so you need to be in the sudo group:
+```bash
+groups
+```
+Should include `sudo` in the output.
 
 ## Environment
 
@@ -160,10 +144,24 @@ Updating system packages...
 - **Node.js:** 24.x
 - **User:** slesz (sudo group member)
 
+## Migration from Auto-Update
+
+If you were using the old auto-update setup:
+
+1. The auto-update script has been disabled in `.bashrc`
+2. Old files remain for reference:
+   - `~/.auto-update.sh` - Old automatic script
+   - `~/.auto-update.log` - Old log file
+3. You can safely delete them if desired:
+   ```bash
+   rm ~/.auto-update.sh ~/.auto-update.log
+   ```
+
 ## Created
 
-- **Date:** 2025-11-22
-- **Author:** Automated setup with Claude Code
+- **Original Date:** 2025-11-22 (Auto-update)
+- **Updated Date:** 2025-11-22 (Manual update)
+- **Author:** Setup with Claude Code
 
 ## License
 
